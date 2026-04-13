@@ -165,3 +165,4 @@ Edit `src/js/config.js` to:
 MIT — Free to use and modify.
 # Price-Control-Pakistan
 # Price-Control-Pakistan
+# Price-Control-Pakistan
