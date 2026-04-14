@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js'
 
-/** @typedef {'dashboard' | 'history' | 'reference'} StaffPermissionKey */
+/** @typedef {'dashboard' | 'history' | 'reference' | 'areaMonitors'} StaffPermissionKey */
 
 let cachedUserId = /** @type {string | null} */ (null)
 let cachedProfile = /** @type {Record<string, unknown> | null | undefined} */ (undefined)
@@ -56,7 +56,8 @@ export function hasStaffAccess(profile) {
   return !!(
     profile.can_view_dashboard ||
     profile.can_view_history ||
-    profile.can_manage_reference_prices
+    profile.can_manage_reference_prices ||
+    profile.can_manage_area_monitors
   )
 }
 
@@ -69,7 +70,7 @@ export function getStaffLoginBlockerMessage(profile) {
     return 'No row in staff_profiles for this user, or it could not be loaded. Copy the user UUID from Supabase Authentication → Users into staff_profiles.user_id (same project as this app).'
   }
   if (!hasStaffAccess(profile)) {
-    return 'Your staff_profiles row exists but has no permissions yet. In Supabase SQL, set is_super_admin = true or set at least one of: can_view_dashboard, can_view_history, can_manage_reference_prices to true.'
+    return 'Your staff_profiles row exists but has no permissions yet. In Supabase SQL, set is_super_admin = true or set at least one of: can_view_dashboard, can_view_history, can_manage_reference_prices, can_manage_area_monitors to true.'
   }
   return null
 }
@@ -89,6 +90,8 @@ export function hasPermission(profile, key) {
       return !!profile.can_view_history
     case 'reference':
       return !!profile.can_manage_reference_prices
+    case 'areaMonitors':
+      return !!profile.can_manage_area_monitors
     default:
       return false
   }

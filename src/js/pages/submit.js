@@ -1,11 +1,13 @@
 import '../../css/main.css'
 import { renderLayout } from '../layout.js'
-import { CITIES, PRODUCTS } from '../config.js'
+import { PRODUCTS } from '../config.js'
+import { getCityNames } from '../cityList.js'
 import { submitPrices, getReferencePrices } from '../api.js'
 import { validatePrice, validateName, formatPKR, showToast } from '../utils.js'
 
 // ---- Render Page ----
 ;(async () => {
+  const cityNames = await getCityNames()
   const container = await renderLayout('Submit Prices', 'submit')
 
   container.innerHTML = `
@@ -31,7 +33,7 @@ import { validatePrice, validateName, formatPKR, showToast } from '../utils.js'
             <label class="form-label" for="city-select">City <span>*</span></label>
             <select id="city-select">
               <option value="">— Select your city —</option>
-              ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+              ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
             </select>
             <div class="form-error" id="city-error">Please select a city</div>
           </div>

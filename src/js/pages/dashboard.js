@@ -1,6 +1,7 @@
 import '../../css/main.css'
 import { renderLayout, setRealtimeStatus, updateAlertBadge } from '../layout.js'
-import { CITIES, PRODUCTS, OVERPRICE_THRESHOLD } from '../config.js'
+import { PRODUCTS, OVERPRICE_THRESHOLD } from '../config.js'
+import { getCityNames } from '../cityList.js'
 import {
   getCityAverages, getReferencePrices, getNationalAverages,
   getSubmissionCount, getPriceTrend, getAllAverages,
@@ -20,6 +21,8 @@ import { requirePermission } from '../auth.js'
   const ctx = await requirePermission('dashboard')
   if (!ctx) return
 
+  const cityNames = await getCityNames()
+
   const { session, profile } = ctx
 
   const container = await renderLayout('Dashboard', 'dashboard', {
@@ -38,7 +41,7 @@ import { requirePermission } from '../auth.js'
         <label for="city-filter">📍 City:</label>
         <select id="city-filter">
           <option value="">All Cities (National)</option>
-          ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+          ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>
       </div>
       <button class="btn btn--outline btn--sm" id="refresh-btn">🔄 Refresh</button>
@@ -108,7 +111,7 @@ import { requirePermission } from '../auth.js'
         </select>
         <select id="trend-city">
           <option value="">Select city…</option>
-          ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+          ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>
       </div>
       <div class="chart-wrap" style="height:240px">

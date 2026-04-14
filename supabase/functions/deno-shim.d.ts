@@ -12,3 +12,5 @@ declare global {
     }
   }
 }
+
+// Deno.serve is provided by the Supabase Edge runtime; shim satisfies local TS.

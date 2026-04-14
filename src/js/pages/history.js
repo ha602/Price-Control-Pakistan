@@ -1,6 +1,7 @@
 import '../../css/main.css'
 import { renderLayout } from '../layout.js'
-import { CITIES, PRODUCTS } from '../config.js'
+import { PRODUCTS } from '../config.js'
+import { getCityNames } from '../cityList.js'
 import { getSubmissions, getSubmissionCount } from '../api.js'
 import { formatPKR, formatDateTime, calcOverprice, getSeverityLabel, showToast } from '../utils.js'
 import { getReferencePrices } from '../api.js'
@@ -9,6 +10,8 @@ import { requirePermission } from '../auth.js'
 ;(async () => {
   const ctx = await requirePermission('history')
   if (!ctx) return
+
+  const cityNames = await getCityNames()
 
   const { session, profile } = ctx
 
@@ -36,7 +39,7 @@ import { requirePermission } from '../auth.js'
         <label class="form-label">City</label>
         <select id="filter-city">
           <option value="">All Cities</option>
-          ${CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+          ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>
       </div>
       <div class="form-group" style="margin:0;flex:1;min-width:160px">

@@ -1,6 +1,7 @@
 // Shared layout: sidebar, topbar, mobile nav
 
 import { getSession, getStaffProfile, hasStaffAccess, hasPermission, signOut } from './auth.js'
+import { isPhase2 } from './phase.js'
 
 /** @typedef {{ profile?: object | null, session?: object, userEmail?: string | null, showAdminNav?: boolean }} LayoutOptions */
 
@@ -21,6 +22,7 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
   const showDash = hasPermission(profile, 'dashboard')
   const showHist = hasPermission(profile, 'history')
   const showRef = hasPermission(profile, 'reference')
+  const showAreaMonitors = isPhase2() && hasPermission(profile, 'areaMonitors')
 
   const insights =
     hasAccess && (showDash || showHist)
@@ -44,12 +46,23 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
       : ''
 
   const adminSec =
-    hasAccess && showRef
+    hasAccess && (showRef || showAreaMonitors)
       ? `
         <div class="nav-section-label" style="margin-top:0.75rem">Administration</div>
-        <a href="/admin.html" class="nav-item ${activePage === 'admin' ? 'active' : ''}">
+        ${
+          showRef
+            ? `<a href="/admin.html" class="nav-item ${activePage === 'admin' ? 'active' : ''}">
           <span class="nav-item__icon">⚙️</span> Reference Prices
-        </a>
+        </a>`
+            : ''
+        }
+        ${
+          showAreaMonitors
+            ? `<a href="/area-monitors.html" class="nav-item ${activePage === 'areaMonitors' ? 'active' : ''}">
+          <span class="nav-item__icon">📍</span> Area monitors
+        </a>`
+            : ''
+        }
       `
       : ''
 
