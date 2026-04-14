@@ -1,0 +1,2 @@
+-- Placeholder for `supabase db reset` when using local Supabase (optional).
+-- Edge Function deployment does not use this file.

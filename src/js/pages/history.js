@@ -4,14 +4,17 @@ import { CITIES, PRODUCTS } from '../config.js'
 import { getSubmissions, getSubmissionCount } from '../api.js'
 import { formatPKR, formatDateTime, calcOverprice, getSeverityLabel, showToast } from '../utils.js'
 import { getReferencePrices } from '../api.js'
-import { requireAdminOrRedirect } from '../auth.js'
+import { requirePermission } from '../auth.js'
 
 ;(async () => {
-  const session = await requireAdminOrRedirect()
-  if (!session) return
+  const ctx = await requirePermission('history')
+  if (!ctx) return
+
+  const { session, profile } = ctx
 
   const container = await renderLayout('Submission History', 'history', {
-    showAdminNav: true,
+    session,
+    profile,
     userEmail: session.user.email
   })
 

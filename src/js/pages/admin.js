@@ -3,14 +3,17 @@ import { renderLayout } from '../layout.js'
 import { PRODUCTS } from '../config.js'
 import { getReferencePrices, updateReferencePrice, getNationalAverages } from '../api.js'
 import { formatPKR, calcOverprice, getSeverityLabel, showToast } from '../utils.js'
-import { requireAdminOrRedirect } from '../auth.js'
+import { requirePermission } from '../auth.js'
 
 ;(async () => {
-  const session = await requireAdminOrRedirect()
-  if (!session) return
+  const ctx = await requirePermission('reference')
+  if (!ctx) return
+
+  const { session, profile } = ctx
 
   const container = await renderLayout('Reference Prices', 'admin', {
-    showAdminNav: true,
+    session,
+    profile,
     userEmail: session.user.email
   })
 

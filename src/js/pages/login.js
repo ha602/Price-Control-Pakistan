@@ -1,5 +1,13 @@
 import '../../css/main.css'
-import { signInWithPassword, isAdminUser, signOut, getSession } from '../auth.js'
+import {
+  signInWithPassword,
+  signOut,
+  getSession,
+  getStaffProfile,
+  hasStaffAccess,
+  clearStaffProfileCache,
+  getStaffLoginBlockerMessage
+} from '../auth.js'
 
 const params = new URLSearchParams(window.location.search)
 const nextRaw = params.get('next') || '/dashboard.html'
@@ -8,14 +16,20 @@ const reason = params.get('reason')
 
 const reasonMsg =
   reason === 'forbidden'
-    ? '<p class="login-banner login-banner--warn">This account is not authorized for staff access.</p>'
-    : ''
+    ? '<p class="login-banner login-banner--warn">This account is not authorized for admin access.</p>'
+    : reason === 'nopermission'
+      ? '<p class="login-banner login-banner--warn">You don\'t have permission to open that page. Ask your project owner to update your row in <code>staff_profiles</code> in Supabase.</p>'
+      : ''
 
 ;(async () => {
-  const session = await getSession()
-  if (session?.user && (await isAdminUser(session.user))) {
-    window.location.replace(nextUrl)
-    return
+  const s = await getSession()
+  if (s?.user) {
+    clearStaffProfileCache()
+    const profile = await getStaffProfile()
+    if (hasStaffAccess(profile)) {
+      window.location.replace(nextUrl)
+      return
+    }
   }
 
   document.body.classList.add('login-page-body')
@@ -26,8 +40,8 @@ const reasonMsg =
       <div class="login-card__brand">
         <span class="login-card__mark" aria-hidden="true"></span>
         <div>
-          <h1 class="login-card__title">Staff sign in</h1>
-          <p class="login-card__subtitle">Dashboard, history, and reference prices require an authorized admin account.</p>
+          <h1 class="login-card__title">Admin sign in</h1>
+          <p class="login-card__subtitle">Sign in with an account that has a row in <code>staff_profiles</code> (created in Supabase).</p>
         </div>
       </div>
       ${reasonMsg}
@@ -73,10 +87,13 @@ const reasonMsg =
         errEl.classList.remove('hidden')
         return
       }
-      const ok = await isAdminUser(data.user)
-      if (!ok) {
+      clearStaffProfileCache()
+      const profile = await getStaffProfile()
+      if (!hasStaffAccess(profile)) {
         await signOut()
-        errEl.textContent = 'This account is not registered as staff. Contact your administrator.'
+        errEl.textContent =
+          getStaffLoginBlockerMessage(profile) ||
+          'This account has no admin profile in staff_profiles. Add the user in Supabase Auth, then insert their UUID into staff_profiles.'
         errEl.classList.remove('hidden')
         return
       }

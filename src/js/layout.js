@@ -1,47 +1,61 @@
 // Shared layout: sidebar, topbar, mobile nav
 
-import { getSession, isAdminUser, signOut } from './auth.js'
+import { getSession, getStaffProfile, hasStaffAccess, hasPermission, signOut } from './auth.js'
 
-/** @typedef {{ showAdminNav?: boolean, userEmail?: string | null }} LayoutOptions */
+/** @typedef {{ profile?: object | null, session?: object, userEmail?: string | null, showAdminNav?: boolean }} LayoutOptions */
 
 /**
- * Renders shell. Admin-only links appear only when the user is signed in and in `admin_users`.
+ * Renders shell. Admin nav links depend on `staff_profiles` permissions.
  */
 export async function renderLayout(pageTitle, activePage, options = {}) {
-  let showAdminNav = options.showAdminNav
-  let userEmail = options.userEmail ?? null
-
-  if (showAdminNav === undefined) {
-    const session = await getSession()
-    if (session?.user) {
-      const admin = await isAdminUser(session.user)
-      showAdminNav = admin
-      if (admin) userEmail = session.user.email ?? null
-    } else {
-      showAdminNav = false
-    }
-  } else if (showAdminNav && userEmail === undefined) {
-    const session = await getSession()
-    userEmail = session?.user?.email ?? null
+  const session = options.session ?? (await getSession())
+  let profile = options.profile
+  if (profile === undefined && session?.user) {
+    profile = await getStaffProfile()
   }
 
-  const adminBlock = showAdminNav
-    ? `
+  let userEmail = options.userEmail ?? session?.user?.email ?? null
+
+  const hasAccess = hasStaffAccess(profile)
+
+  const showDash = hasPermission(profile, 'dashboard')
+  const showHist = hasPermission(profile, 'history')
+  const showRef = hasPermission(profile, 'reference')
+
+  const insights =
+    hasAccess && (showDash || showHist)
+      ? `
         <div class="nav-section-label" style="margin-top:0.75rem">Insights</div>
-        <a href="/dashboard.html" class="nav-item ${activePage === 'dashboard' ? 'active' : ''}">
+        ${
+          showDash
+            ? `<a href="/dashboard.html" class="nav-item ${activePage === 'dashboard' ? 'active' : ''}">
           <span class="nav-item__icon">📈</span> Dashboard
-        </a>
-        <a href="/history.html" class="nav-item ${activePage === 'history' ? 'active' : ''}">
+        </a>`
+            : ''
+        }
+        ${
+          showHist
+            ? `<a href="/history.html" class="nav-item ${activePage === 'history' ? 'active' : ''}">
           <span class="nav-item__icon">🗂</span> History
-        </a>
+        </a>`
+            : ''
+        }
+      `
+      : ''
+
+  const adminSec =
+    hasAccess && showRef
+      ? `
         <div class="nav-section-label" style="margin-top:0.75rem">Administration</div>
         <a href="/admin.html" class="nav-item ${activePage === 'admin' ? 'active' : ''}">
           <span class="nav-item__icon">⚙️</span> Reference Prices
         </a>
       `
-    : ''
+      : ''
 
-  const footerAccount = showAdminNav
+  const adminBlock = insights + adminSec
+
+  const footerAccount = hasAccess
     ? `
         <div class="sidebar__account">
           <span class="sidebar__account-email" title="${userEmail || ''}">${userEmail ? escapeHtml(userEmail) : 'Admin'}</span>
@@ -49,7 +63,7 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
         </div>
       `
     : `
-        <a href="/login.html" class="sidebar__staff-link">Staff sign in</a>
+        <a href="/login.html?next=/dashboard.html" class="sidebar__staff-link">Admin sign in</a>
       `
 
   document.body.insertAdjacentHTML(

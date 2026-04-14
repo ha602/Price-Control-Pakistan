@@ -51,16 +51,73 @@ SELECT
 FROM price_submissions
 GROUP BY city, product;
 
--- 5. Admin users (link Supabase Auth users who may access dashboard / history / admin UI)
-CREATE TABLE IF NOT EXISTS admin_users (
+-- 5. Staff profiles (super admin + per-permission flags; see supabase-staff-roles.sql for migration)
+CREATE TABLE IF NOT EXISTS staff_profiles (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  is_super_admin BOOLEAN NOT NULL DEFAULT false,
+  can_view_dashboard BOOLEAN NOT NULL DEFAULT false,
+  can_view_history BOOLEAN NOT NULL DEFAULT false,
+  can_manage_reference_prices BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
-ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+-- RLS helpers: avoid infinite recursion (policies must not subquery staff_profiles without SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION public.staff_requester_is_super_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(
+    (SELECT is_super_admin FROM public.staff_profiles WHERE user_id = auth.uid()),
+    false
+  );
+$$;
 
-CREATE POLICY "Users can read own admin row"
-  ON admin_users FOR SELECT USING (auth.uid() = user_id);
+CREATE OR REPLACE FUNCTION public.staff_requester_can_read_submissions()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff_profiles s
+    WHERE s.user_id = auth.uid()
+      AND (s.is_super_admin OR s.can_view_dashboard OR s.can_view_history)
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.staff_requester_can_update_reference_prices()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff_profiles s
+    WHERE s.user_id = auth.uid()
+      AND (s.is_super_admin OR s.can_manage_reference_prices)
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.staff_requester_is_super_admin() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.staff_requester_can_read_submissions() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.staff_requester_can_update_reference_prices() TO anon, authenticated, service_role;
+
+ALTER TABLE staff_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "staff_reads_own_profile"
+  ON staff_profiles FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "super_admin_manage_staff"
+  ON staff_profiles FOR ALL
+  USING (public.staff_requester_is_super_admin())
+  WITH CHECK (public.staff_requester_is_super_admin());
 
 -- 6. Enable Row Level Security (RLS)
 ALTER TABLE price_submissions ENABLE ROW LEVEL SECURITY;
@@ -68,11 +125,12 @@ ALTER TABLE reference_prices ENABLE ROW LEVEL SECURITY;
 
 -- 7. RLS Policies
 DROP POLICY IF EXISTS "Allow public read on submissions" ON price_submissions;
+DROP POLICY IF EXISTS "Admins can read submissions" ON price_submissions;
+DROP POLICY IF EXISTS "Staff can read submissions" ON price_submissions;
 
--- Citizens submit without auth; only staff (rows in admin_users) can read submissions
-CREATE POLICY "Admins can read submissions"
+CREATE POLICY "Staff can read submissions"
   ON price_submissions FOR SELECT
-  USING (EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = auth.uid()));
+  USING (public.staff_requester_can_read_submissions());
 
 CREATE POLICY "Allow public insert on submissions"
   ON price_submissions FOR INSERT WITH CHECK (true);
@@ -80,16 +138,21 @@ CREATE POLICY "Allow public insert on submissions"
 CREATE POLICY "Allow public read on reference_prices"
   ON reference_prices FOR SELECT USING (true);
 
-CREATE POLICY "Admins can update reference_prices"
+DROP POLICY IF EXISTS "Admins can update reference_prices" ON reference_prices;
+DROP POLICY IF EXISTS "Staff can update reference prices" ON reference_prices;
+
+CREATE POLICY "Staff can update reference prices"
   ON reference_prices FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = auth.uid()));
+  USING (public.staff_requester_can_update_reference_prices())
+  WITH CHECK (public.staff_requester_can_update_reference_prices());
 
 -- 8. Enable Realtime on price_submissions (ignore error if already added)
 ALTER PUBLICATION supabase_realtime ADD TABLE price_submissions;
 
 -- ============================================================
--- After signup: Authentication → create user, then run:
---   INSERT INTO admin_users (user_id) VALUES ('<uuid from auth.users>');
+-- Create first Auth user (Authentication), then run:
+--   INSERT INTO staff_profiles (user_id, is_super_admin, can_view_dashboard, can_view_history, can_manage_reference_prices)
+--   VALUES ('<uuid>', true, true, true, true);
+-- Or promote in SQL: UPDATE staff_profiles SET ... WHERE user_id = '...';
 -- Enable Email provider under Authentication → Providers.
 -- ============================================================

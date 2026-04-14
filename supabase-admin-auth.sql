@@ -1,3 +1,5 @@
+-- Superseded by supabase-staff-roles.sql for multi-staff / permissions.
+--
 -- Run once in Supabase SQL Editor if you already applied an older supabase-setup.sql
 -- (adds staff registry + tightens RLS for existing projects)
 

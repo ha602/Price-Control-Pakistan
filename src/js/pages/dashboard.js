@@ -14,14 +14,17 @@ import {
   renderAvgVsRefChart, renderOverpriceDonut,
   renderTrendChart, renderCityComparisonChart
 } from '../charts.js'
-import { requireAdminOrRedirect } from '../auth.js'
+import { requirePermission } from '../auth.js'
 
 ;(async () => {
-  const session = await requireAdminOrRedirect()
-  if (!session) return
+  const ctx = await requirePermission('dashboard')
+  if (!ctx) return
+
+  const { session, profile } = ctx
 
   const container = await renderLayout('Dashboard', 'dashboard', {
-    showAdminNav: true,
+    session,
+    profile,
     userEmail: session.user.email
   })
 

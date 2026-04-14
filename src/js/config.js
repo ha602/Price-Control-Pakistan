@@ -57,3 +57,11 @@ export const PRICE_LIMITS = {
 
 export const APP_NAME = 'PriceWatch Pakistan'
 export const APP_TAGLINE = 'Citizen-driven price transparency'
+
+/** Supabase Edge Function base: `{project}.supabase.co/functions/v1/{name}` */
+export function getEdgeFunctionUrl(name) {
+  const base = import.meta.env.VITE_SUPABASE_URL
+  if (!base) return ''
+  return `${base.replace(/\/$/, '')}/functions/v1/${name}`
+}
+
