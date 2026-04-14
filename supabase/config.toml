@@ -361,6 +361,13 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# Edge Functions: per-function settings (requires deploy via CLI for remote to pick this up).
+# If the API gateway returns 401 "Invalid JWT" but Auth works elsewhere, your project may use
+# ES256 / rotated JWT signing keys — the gateway can reject tokens the Auth API accepts.
+# This function still authenticates inside the handler (getUser + staff_profiles).
+[functions.send-area-alert]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

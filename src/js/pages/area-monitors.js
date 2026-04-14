@@ -2,7 +2,7 @@ import '../../css/main.css'
 import { renderLayout } from '../layout.js'
 import { isPhase2 } from '../phase.js'
 import { requirePermission } from '../auth.js'
-import { supabase } from '../supabase.js'
+import { supabase, invokeEdgeFunction } from '../supabase.js'
 import { getAllAverages, getReferencePrices } from '../api.js'
 import { buildRefMap, calcOverprice, showToast } from '../utils.js'
 import { OVERPRICE_THRESHOLD } from '../config.js'
@@ -91,7 +91,7 @@ async function countSubmissionsForCity(cityName) {
       </div>
       <button type="button" class="btn btn--outline btn--sm" id="refresh-btn">Refresh</button>
     </div>
-    <p class="text-muted" style="padding:0 0 1rem;font-size:0.88rem">Optional note appended to every alert email:</p>
+    <p class="text-muted" style="padding:0 0 1rem;font-size:0.88rem">Optional extra line appended to every alert (in addition to each row’s Notes field):</p>
     <div class="form-group" style="margin-bottom:1rem">
       <textarea id="alert-note-template" rows="2" placeholder="Optional message from admin…" style="width:100%;max-width:560px"></textarea>
     </div>
@@ -153,10 +153,10 @@ async function countSubmissionsForCity(cityName) {
               return `
             <tr data-city-id="${c.id}" data-city-name="${encodeURIComponent(c.name)}">
               <td><strong>${esc(c.name)}</strong></td>
-              <td><input type="text" id="head-${c.id}" value="${esc(head)}" placeholder="Name" style="min-width:120px;font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
-              <td><input type="email" id="email-${c.id}" value="${esc(email)}" placeholder="email@…" style="min-width:160px;font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
-              <td><input type="text" id="phone-${c.id}" value="${esc(phone)}" placeholder="Optional" style="font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
-              <td><input type="text" id="notes-${c.id}" value="${esc(notes)}" placeholder="Optional" style="min-width:100px;font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
+              <td><input type="text" class="monitor-row-head" id="head-${c.id}" value="${esc(head)}" placeholder="Name" style="min-width:120px;font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
+              <td><input type="email" class="monitor-row-email" id="email-${c.id}" value="${esc(email)}" placeholder="email@…" style="min-width:160px;font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
+              <td><input type="text" class="monitor-row-phone" id="phone-${c.id}" value="${esc(phone)}" placeholder="Optional" style="font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
+              <td><input type="text" class="monitor-row-notes" id="notes-${c.id}" value="${esc(notes)}" placeholder="Optional" style="min-width:100px;font-size:0.88rem;padding:0.35rem 0.5rem" /></td>
               <td>
                 <span class="badge ${nOver > 0 ? 'badge--high' : 'badge--normal'}">${nOver}</span>
               </td>
@@ -182,10 +182,10 @@ async function countSubmissionsForCity(cityName) {
       const act = btn.getAttribute('data-act')
 
       if (act === 'save') {
-        const head_name = document.getElementById(`head-${cityId}`)?.value?.trim() ?? ''
-        const email = document.getElementById(`email-${cityId}`)?.value?.trim() ?? ''
-        const phone = document.getElementById(`phone-${cityId}`)?.value?.trim() ?? ''
-        const notes = document.getElementById(`notes-${cityId}`)?.value?.trim() ?? ''
+        const head_name = tr.querySelector('.monitor-row-head')?.value?.trim() ?? ''
+        const email = tr.querySelector('.monitor-row-email')?.value?.trim() ?? ''
+        const phone = tr.querySelector('.monitor-row-phone')?.value?.trim() ?? ''
+        const notes = tr.querySelector('.monitor-row-notes')?.value?.trim() ?? ''
         if (!email) {
           showToast('Email is required to save a monitor.', 'warning')
           return
@@ -238,12 +238,12 @@ async function countSubmissionsForCity(cityName) {
       }
 
       if (act === 'alert') {
-        const note = document.getElementById('alert-note-template')?.value?.trim() ?? ''
+        const rowNotes = tr.querySelector('.monitor-row-notes')?.value?.trim() ?? ''
+        const templateNote = document.getElementById('alert-note-template')?.value?.trim() ?? ''
+        const note = [rowNotes, templateNote].filter(Boolean).join('\n\n')
         btn.disabled = true
         try {
-          const { data, error } = await supabase.functions.invoke('send-area-alert', {
-            body: { cityId, note }
-          })
+          const { data, error } = await invokeEdgeFunction('send-area-alert', { cityId, note })
           if (error) throw error
           if (data?.error) throw new Error(data.error)
           showToast('Alert email sent.', 'success')

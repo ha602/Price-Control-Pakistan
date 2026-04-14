@@ -2,9 +2,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 
+/** Browser preflight requires Allow-Methods (and headers that match supabase-js). See https://supabase.com/docs/guides/functions/cors */
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, prefer, x-supabase-api-version',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
 }
 
 const OVERPRICE_PCT = Number(Deno.env.get('OVERPRICE_THRESHOLD') || '10')
