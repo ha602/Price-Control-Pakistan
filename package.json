@@ -1,0 +1,18 @@
+{
+  "name": "price-control-pakistan",
+  "version": "1.0.0",
+  "description": "Citizen-driven price monitoring system for Pakistan",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "chart.js": "^4.4.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
