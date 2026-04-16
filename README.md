@@ -4,7 +4,16 @@ A citizen-driven price monitoring system for essential commodities across Pakist
 
 ---
 
-## 🚀 Quick Start
+## � Clone the Project
+
+```bash
+git clone https://github.com/yourusername/price-control-pakistan.git
+cd price-control-pakistan
+```
+
+---
+
+## �🚀 Quick Start
 
 ### 1. Install Dependencies
 ```bash

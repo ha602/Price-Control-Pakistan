@@ -61,25 +61,31 @@ Deno.serve(async (req) => {
       })
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-    const userClient = createClient(supabaseUrl, supabaseAnon, {
-      global: { headers: { Authorization: authHeader } }
-    })
-    const {
-      data: { user },
-      error: userErr
-    } = await userClient.auth.getUser()
-    if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    const bearer = authHeader.match(/^Bearer\s+(.+)$/i)
+    const accessToken = bearer?.[1]?.trim()
+    if (!accessToken) {
+      return new Response(JSON.stringify({ error: 'Invalid Authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+    /** Service role + explicit JWT validates ES256 / rotated keys reliably; anon + getUser() can 401 in Edge. */
     const admin = createClient(supabaseUrl, serviceKey)
+    const {
+      data: { user },
+      error: userErr
+    } = await admin.auth.getUser(accessToken)
+    if (userErr || !user) {
+      console.error('send-area-alert getUser:', userErr?.message ?? 'no user')
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     const { data: staffRow, error: staffErr } = await admin
       .from('staff_profiles')
