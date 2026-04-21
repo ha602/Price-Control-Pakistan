@@ -90,7 +90,7 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
       <div class="sidebar__logo">
         <div class="sidebar__logo-mark" aria-hidden="true"></div>
         <div class="sidebar__logo-text">
-          <h2>PriceWatch</h2>
+          <h2>PriceControl</h2>
           <p>Pakistan</p>
         </div>
       </div>
@@ -103,7 +103,7 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
       </nav>
       <div class="sidebar__footer">
         ${footerAccount}
-        <div class="sidebar__copyright">&copy; ${new Date().getFullYear()} PriceWatch Pakistan</div>
+        <div class="sidebar__copyright">&copy; ${new Date().getFullYear()} PriceControl Pakistan</div>
         <span class="sidebar__tagline">Citizen-driven transparency</span>
       </div>
     </aside>

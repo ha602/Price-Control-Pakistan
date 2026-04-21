@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       }
     })
 
-    const subject = `[PriceWatch] High prices in ${city.name} — action requested`
+    const subject = `[PriceControl] High prices in ${city.name} — action requested`
     const plain = [
       `Dear ${monitor.head_name || 'Area head'},`,
       '',
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
       '',
       'Please take appropriate action to monitor shops and pricing in your area.',
       '',
-      '— PriceWatch Pakistan'
+      '— PriceControl Pakistan'
     ]
       .filter(Boolean)
       .join('\n')
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
       <ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
       ${note ? `<p><strong>Message from admin:</strong><br/>${escapeHtml(note)}</p>` : ''}
       <p>Please take appropriate action to monitor shops and pricing in your area.</p>
-      <p style="color:#666;font-size:12px">Sent by PriceWatch Pakistan</p>
+      <p style="color:#666;font-size:12px">Sent by PriceControl Pakistan</p>
     `
 
     await client.send({

@@ -55,7 +55,7 @@ export const PRICE_LIMITS = {
   'Apples':         { min: 50,  max: 1000 }
 }
 
-export const APP_NAME = 'PriceWatch Pakistan'
+export const APP_NAME = 'PriceControl Pakistan'
 export const APP_TAGLINE = 'Citizen-driven price transparency'
 
 /** Supabase Edge Function base: `{project}.supabase.co/functions/v1/{name}` */

@@ -1,4 +1,4 @@
-# 📊 PriceWatch Pakistan
+# 📊 PriceControl Pakistan
 
 A citizen-driven price monitoring system for essential commodities across Pakistan's cities.
 
