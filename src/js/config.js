@@ -26,16 +26,24 @@ export const CITIES = [
 ]
 
 export const PRODUCTS = [
-  { name: 'Sugar',          unit: 'kg',    icon: '🍬', category: 'Staples' },
-  { name: 'Atta (Wheat)',   unit: 'kg',    icon: '🌾', category: 'Staples' },
-  { name: 'Cooking Oil',    unit: 'litre', icon: '🫙', category: 'Staples' },
-  { name: 'Rice (Basmati)', unit: 'kg',    icon: '🍚', category: 'Staples' },
-  { name: 'Milk',           unit: 'litre', icon: '🥛', category: 'Dairy' },
-  { name: 'Chicken',        unit: 'kg',    icon: '🍗', category: 'Meat' },
-  { name: 'Tomatoes',       unit: 'kg',    icon: '🍅', category: 'Vegetables' },
-  { name: 'Onions',         unit: 'kg',    icon: '🧅', category: 'Vegetables' },
-  { name: 'Potatoes',       unit: 'kg',    icon: '🥔', category: 'Vegetables' },
-  { name: 'Apples',         unit: 'kg',    icon: '🍎', category: 'Fruits' }
+  { name: 'Sugar',          unit: 'kg',       icon: '🍬', category: 'Staples' },
+  { name: 'Atta (Wheat)',   unit: 'kg',       icon: '🌾', category: 'Staples' },
+  { name: 'Cooking Oil',    unit: 'litre',    icon: '🫙', category: 'Staples' },
+  { name: 'Rice (Basmati)', unit: 'kg',       icon: '🍚', category: 'Staples' },
+  { name: 'Dal (Masoor)',   unit: 'kg',       icon: '🥣', category: 'Staples' },
+  { name: 'Milk',           unit: 'litre',    icon: '🥛', category: 'Dairy' },
+  { name: 'Eggs',           unit: 'dozen',    icon: '🥚', category: 'Dairy' },
+  { name: 'Chicken',        unit: 'kg',       icon: '🍗', category: 'Meat' },
+  { name: 'Beef',           unit: 'kg',       icon: '🥩', category: 'Meat' },
+  { name: 'Tomatoes',       unit: 'kg',       icon: '🍅', category: 'Vegetables' },
+  { name: 'Onions',         unit: 'kg',       icon: '🧅', category: 'Vegetables' },
+  { name: 'Potatoes',       unit: 'kg',       icon: '🥔', category: 'Vegetables' },
+  { name: 'Apples',         unit: 'kg',       icon: '🍎', category: 'Fruits' },
+  { name: 'Bananas',        unit: 'dozen',    icon: '🍌', category: 'Fruits' },
+  { name: 'Tea',            unit: 'kg',       icon: '🍵', category: 'Beverages' },
+  { name: 'Roti (Naan)',    unit: 'piece',    icon: '🫓', category: 'Bakery' },
+  { name: 'Petrol',         unit: 'litre',    icon: '⛽', category: 'Fuel' },
+  { name: 'LPG Cylinder',   unit: 'cylinder', icon: '🛢️', category: 'Fuel' }
 ]
 
 // Overpricing alert threshold (percentage above reference price)
@@ -47,12 +55,20 @@ export const PRICE_LIMITS = {
   'Atta (Wheat)':   { min: 30,  max: 400  },
   'Cooking Oil':    { min: 100, max: 1000 },
   'Rice (Basmati)': { min: 80,  max: 800  },
+  'Dal (Masoor)':   { min: 100, max: 800  },
   'Milk':           { min: 50,  max: 400  },
+  'Eggs':           { min: 100, max: 600  },
   'Chicken':        { min: 200, max: 1500 },
+  'Beef':           { min: 400, max: 3000 },
   'Tomatoes':       { min: 10,  max: 500  },
   'Onions':         { min: 10,  max: 300  },
   'Potatoes':       { min: 10,  max: 300  },
-  'Apples':         { min: 50,  max: 1000 }
+  'Apples':         { min: 50,  max: 1000 },
+  'Bananas':        { min: 50,  max: 500  },
+  'Tea':            { min: 500, max: 4000 },
+  'Roti (Naan)':    { min: 10,  max: 100  },
+  'Petrol':         { min: 100, max: 500  },
+  'LPG Cylinder':   { min: 1000, max: 8000 }
 }
 
 export const APP_NAME = 'PriceControl Pakistan'

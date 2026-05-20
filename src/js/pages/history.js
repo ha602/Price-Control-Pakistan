@@ -72,7 +72,7 @@ import { requirePermission } from '../auth.js'
   <!-- Summary bar -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem">
     <div id="result-summary" style="font-size:0.9rem;color:var(--text-muted)">Loading…</div>
-    <div style="display:flex;gap:0.75rem;align-items:center">
+    <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
       <label style="font-size:0.85rem;color:var(--text-muted)">Sort by:</label>
       <select id="sort-by" style="width:auto;min-width:150px">
         <option value="submitted_at_desc">Newest First</option>
@@ -80,6 +80,7 @@ import { requirePermission } from '../auth.js'
         <option value="price_desc">Highest Price</option>
         <option value="price_asc">Lowest Price</option>
       </select>
+      <button class="btn btn--outline btn--sm" id="export-csv-btn">⬇️ Export CSV</button>
     </div>
   </div>
 
@@ -107,6 +108,7 @@ let currentPage = 0
 let totalCount = 0
 let refMap = {}
 let allData = []
+let lastFiltered = []
 
 let filters = { city: '', product: '', min: '', max: '', status: '' }
 let sortBy = 'submitted_at_desc'
@@ -162,6 +164,7 @@ async function loadData(page = 0) {
     // Sort
     filtered = sortData(filtered, sortBy)
 
+    lastFiltered = filtered
     totalCount = filtered.length
     const pageData = filtered.slice(offset, offset + PAGE_SIZE)
 
@@ -220,6 +223,7 @@ function renderTable(data) {
           <th>Diff %</th>
           <th>Status</th>
           <th>Market</th>
+          <th>Photo</th>
           <th>Submitted By</th>
           <th>Date & Time</th>
         </tr>
@@ -253,6 +257,7 @@ function renderTable(data) {
               </td>
               <td><span class="badge badge--${severity}">${getSeverityLabel(severity)}</span></td>
               <td style="color:var(--text-muted);font-size:0.82rem">${row.market_name || '—'}</td>
+              <td>${row.photo_url ? `<a href="${row.photo_url}" target="_blank" rel="noopener" title="View photo"><img src="${row.photo_url}" alt="receipt" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" loading="lazy" /></a>` : '<span style="color:var(--text-muted)">—</span>'}</td>
               <td style="color:var(--text-muted);font-size:0.82rem">${row.submitter_name || 'Anonymous'}</td>
               <td style="color:var(--text-muted);font-size:0.8rem;white-space:nowrap">${formatDateTime(row.submitted_at)}</td>
             </tr>
@@ -343,9 +348,64 @@ document.querySelectorAll('#filter-city, #filter-product, #filter-min, #filter-m
 })
 
 function getProductEmoji(name) {
-  const map = { 'Sugar':'🍬','Atta (Wheat)':'🌾','Cooking Oil':'🫙','Rice (Basmati)':'🍚','Milk':'🥛','Chicken':'🍗','Tomatoes':'🍅','Onions':'🧅','Potatoes':'🥔','Apples':'🍎' }
-  return map[name] || '📦'
+  const p = PRODUCTS.find(p => p.name === name)
+  return p?.icon || '📦'
 }
+
+// ---- CSV Export ----
+function escapeCsv(v) {
+  if (v == null) return ''
+  const s = String(v)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+function exportCsv() {
+  const rows = lastFiltered.length ? lastFiltered : allData
+  if (!rows.length) {
+    showToast('No data to export', 'warning')
+    return
+  }
+
+  const header = ['#', 'Product', 'City', 'Market Price (PKR)', 'Unit', 'Reference Price (PKR)', 'Diff %', 'Status', 'Market', 'Photo URL', 'Submitted By', 'Submitted At']
+  const lines = [header.map(escapeCsv).join(',')]
+
+  rows.forEach((row, i) => {
+    const ref = refMap[row.product]
+    const { pct, severity } = ref
+      ? calcOverprice(parseFloat(row.submitted_price), ref)
+      : { pct: 0, severity: 'normal' }
+    lines.push([
+      i + 1,
+      row.product,
+      row.city,
+      row.submitted_price,
+      row.unit,
+      ref ?? '',
+      ref ? (pct > 0 ? '+' : '') + pct : '',
+      getSeverityLabel(severity),
+      row.market_name || '',
+      row.photo_url || '',
+      row.submitter_name || 'Anonymous',
+      row.submitted_at
+    ].map(escapeCsv).join(','))
+  })
+
+  const csv = '﻿' + lines.join('\n')  // BOM so Excel reads UTF-8
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const stamp = new Date().toISOString().slice(0, 10)
+  a.href = url
+  a.download = `price-submissions-${stamp}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  showToast(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`, 'success')
+}
+
+document.getElementById('export-csv-btn').addEventListener('click', exportCsv)
 
   // ---- Init ----
   async function init() {

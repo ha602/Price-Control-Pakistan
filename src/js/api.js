@@ -6,8 +6,13 @@ import { supabase } from './supabase.js'
 
 /**
  * Submit multiple product prices for a city
+ * @param {string} city
+ * @param {Array<{product:string,price:string|number,unit:string}>} prices
+ * @param {string} submitterName
+ * @param {string} marketName
+ * @param {string|null} [photoUrl] optional public URL of an uploaded receipt photo
  */
-export async function submitPrices(city, prices, submitterName, marketName) {
+export async function submitPrices(city, prices, submitterName, marketName, photoUrl = null) {
   const rows = prices.map(({ product, price, unit }) => ({
     city,
     product,
@@ -15,6 +20,7 @@ export async function submitPrices(city, prices, submitterName, marketName) {
     unit,
     submitter_name: submitterName || 'Anonymous',
     market_name: marketName || null,
+    photo_url: photoUrl || null,
     submitted_at: new Date().toISOString()
   }))
 
@@ -23,6 +29,31 @@ export async function submitPrices(city, prices, submitterName, marketName) {
 
   if (error) throw error
   return rows.length
+}
+
+/**
+ * Upload a receipt / price-tag photo to Supabase Storage and return its public URL.
+ * Bucket `price-photos` must exist and be public (see supabase-photo-uploads.sql).
+ */
+export async function uploadPriceReceipt(file) {
+  if (!file) return null
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'gif'].includes(ext) ? ext : 'jpg'
+  const path = `${new Date().getFullYear()}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`
+
+  const { error } = await supabase
+    .storage
+    .from('price-photos')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || `image/${safeExt}`
+    })
+
+  if (error) throw error
+
+  const { data } = supabase.storage.from('price-photos').getPublicUrl(path)
+  return data?.publicUrl || null
 }
 
 /**
@@ -188,6 +219,28 @@ export async function updateReferencePrice(product, newPrice) {
     .from('reference_prices')
     .update({ reference_price: parseFloat(newPrice), updated_at: new Date().toISOString() })
     .eq('product', product)
+    .select()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Upsert a reference price by product name (admin). Use this when seeding
+ * newly-added products from PRODUCTS config that don't have a DB row yet.
+ */
+export async function upsertReferencePrice(product, price, unit = 'kg') {
+  const { data, error } = await supabase
+    .from('reference_prices')
+    .upsert(
+      {
+        product,
+        reference_price: parseFloat(price),
+        unit,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'product' }
+    )
     .select()
 
   if (error) throw error

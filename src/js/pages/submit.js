@@ -2,7 +2,7 @@ import '../../css/main.css'
 import { renderLayout } from '../layout.js'
 import { PRODUCTS } from '../config.js'
 import { getCityNames } from '../cityList.js'
-import { submitPrices, getReferencePrices } from '../api.js'
+import { submitPrices, getReferencePrices, uploadPriceReceipt } from '../api.js'
 import { validatePrice, validateName, formatPKR, showToast } from '../utils.js'
 
 // ---- Render Page ----
@@ -47,6 +47,15 @@ import { validatePrice, validateName, formatPKR, showToast } from '../utils.js'
           <div class="form-group">
             <label class="form-label" for="market-name">Market / Shop Name <span style="color:var(--text-muted)">(optional)</span></label>
             <input type="text" id="market-name" placeholder="e.g. Sunday Bazaar, Ravi Market" maxlength="80" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="photo-input">Receipt / Price-tag photo <span style="color:var(--text-muted)">(optional, max 5 MB)</span></label>
+            <input type="file" id="photo-input" accept="image/*" capture="environment" />
+            <div id="photo-preview" class="hidden" style="margin-top:0.5rem;display:flex;align-items:center;gap:0.75rem">
+              <img id="photo-thumb" alt="preview" style="width:72px;height:72px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border)" />
+              <button type="button" class="btn btn--ghost btn--sm" id="photo-clear">Remove photo</button>
+            </div>
           </div>
         </div>
       </div>
@@ -136,6 +145,37 @@ import { validatePrice, validateName, formatPKR, showToast } from '../utils.js'
 
   // ---- State ----
   let refPrices = {}
+  let pendingPhotoUrl = null
+
+  const photoInput = document.getElementById('photo-input')
+  const photoPreview = document.getElementById('photo-preview')
+  const photoThumb = document.getElementById('photo-thumb')
+  const photoClear = document.getElementById('photo-clear')
+
+  function resetPhoto() {
+    if (photoInput) photoInput.value = ''
+    if (photoThumb) photoThumb.src = ''
+    photoPreview?.classList.add('hidden')
+    pendingPhotoUrl = null
+  }
+
+  photoInput?.addEventListener('change', () => {
+    const file = photoInput.files?.[0]
+    if (!file) { resetPhoto(); return }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Photo must be 5 MB or smaller.', 'warning')
+      resetPhoto()
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      photoThumb.src = e.target.result
+      photoPreview.classList.remove('hidden')
+    }
+    reader.readAsDataURL(file)
+  })
+
+  photoClear?.addEventListener('click', resetPhoto)
 
 // ---- Load Reference Prices ----
 async function loadRefPrices() {
@@ -269,7 +309,21 @@ document.getElementById('submit-btn').addEventListener('click', async () => {
   btn.textContent = 'Submitting…'
 
   try {
-    await submitPrices(city, filled, name, market)
+    let photoUrl = pendingPhotoUrl
+    const file = photoInput?.files?.[0]
+    if (file && !photoUrl) {
+      btn.textContent = 'Uploading photo…'
+      try {
+        photoUrl = await uploadPriceReceipt(file)
+        pendingPhotoUrl = photoUrl
+      } catch (e) {
+        console.warn('Photo upload failed, submitting without it:', e)
+        showToast('Photo upload failed — submitting without it.', 'warning')
+      }
+      btn.textContent = 'Submitting…'
+    }
+
+    await submitPrices(city, filled, name, market, photoUrl)
     showToast(`✅ ${filled.length} price${filled.length > 1 ? 's' : ''} submitted for ${city}!`, 'success')
 
     // Clear form
@@ -277,6 +331,7 @@ document.getElementById('submit-btn').addEventListener('click', async () => {
     document.getElementById('city-select').value = ''
     document.getElementById('submitter-name').value = ''
     document.getElementById('market-name').value = ''
+    resetPhoto()
     updateSummary()
 
     // Show success message

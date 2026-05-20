@@ -16,6 +16,7 @@ import {
   renderTrendChart, renderCityComparisonChart
 } from '../charts.js'
 import { requirePermission } from '../auth.js'
+import { t } from '../i18n.js'
 
 ;(async () => {
   const ctx = await requirePermission('dashboard')
@@ -34,18 +35,27 @@ import { requirePermission } from '../auth.js'
   container.innerHTML = `
   <div class="page-header">
     <div class="page-header__breadcrumb">Home › Dashboard</div>
-    <h1>Price Dashboard</h1>
-    <p>Real-time market price analysis across Pakistan's cities.</p>
+    <h1>${t('dashboard.title')}</h1>
+    <p>${t('dashboard.subtitle')}</p>
     <div class="page-header__actions">
       <div class="select-group">
-        <label for="city-filter">📍 City:</label>
+        <label for="city-filter">📍 ${t('common.city')}:</label>
         <select id="city-filter">
-          <option value="">All Cities (National)</option>
+          <option value="">${t('common.allCities')}</option>
           ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>
       </div>
-      <button class="btn btn--outline btn--sm" id="refresh-btn">🔄 Refresh</button>
+      <button class="btn btn--outline btn--sm" id="refresh-btn">🔄 ${t('common.refresh')}</button>
     </div>
+  </div>
+
+  <!-- National Price Index hero card -->
+  <div class="pi-card" id="price-index-card">
+    <div>
+      <div class="pi-card__label">${t('dashboard.priceIndex')}</div>
+      <div class="pi-card__value" id="price-index-value">—</div>
+    </div>
+    <div class="pi-card__hint" id="price-index-hint">${t('dashboard.priceIndexHint')}</div>
   </div>
 
   <!-- Stats -->
@@ -56,6 +66,19 @@ import { requirePermission } from '../auth.js'
         <div class="skeleton" style="height:14px;width:80%"></div>
       </div>
     `).join('')}
+  </div>
+
+  <!-- Top overpriced cities -->
+  <div class="card mb-3">
+    <div class="card__header">
+      <div>
+        <div class="card__title">🏙️ ${t('dashboard.topOverpriced')}</div>
+        <div class="card__subtitle">${t('dashboard.topOverpricedHint')}</div>
+      </div>
+    </div>
+    <div id="top-overpriced">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
   </div>
 
   <!-- Alert Banner -->
@@ -166,6 +189,8 @@ async function loadAll() {
     allAverages = avgData || []
 
     renderStats(countData, allAverages, topCities)
+    renderPriceIndex(allAverages, refMap)
+    renderTopOverpriced(allAverages, refMap)
     renderCharts()
     renderAlerts()
     renderBreakdown()
@@ -500,9 +525,85 @@ function startRealtime() {
   setRealtimeStatus(true)
 }
 
+// ---- National Price Index ----
+function renderPriceIndex(averages, refs) {
+  const valueEl = document.getElementById('price-index-value')
+  if (!valueEl) return
+
+  const deltas = []
+  ;(averages || []).forEach(a => {
+    const ref = refs[a.product]
+    const avg = parseFloat(a.avg_price)
+    if (!ref || !avg) return
+    deltas.push(((avg - ref) / ref) * 100)
+  })
+
+  if (!deltas.length) {
+    valueEl.textContent = '—'
+    valueEl.className = 'pi-card__value'
+    return
+  }
+
+  const pct = deltas.reduce((s, d) => s + d, 0) / deltas.length
+  const rounded = Math.round(pct * 10) / 10
+  const sign = rounded > 0 ? '+' : ''
+  valueEl.textContent = `${sign}${rounded}%`
+  valueEl.className = 'pi-card__value ' + (rounded > 0 ? 'pi-card__value--up' : rounded < 0 ? 'pi-card__value--down' : '')
+}
+
+// ---- Top Overpriced Cities ----
+function renderTopOverpriced(averages, refs) {
+  const el = document.getElementById('top-overpriced')
+  if (!el) return
+
+  const byCity = {}
+  ;(averages || []).forEach(a => {
+    const ref = refs[a.product]
+    const avg = parseFloat(a.avg_price)
+    if (!ref || !avg) return
+    const pct = ((avg - ref) / ref) * 100
+    if (!byCity[a.city]) byCity[a.city] = []
+    byCity[a.city].push(pct)
+  })
+
+  const rows = Object.entries(byCity)
+    .map(([city, pcts]) => ({
+      city,
+      avgPct: pcts.reduce((s, p) => s + p, 0) / pcts.length,
+      products: pcts.length
+    }))
+    .filter(r => r.avgPct > 0)
+    .sort((a, b) => b.avgPct - a.avgPct)
+    .slice(0, 5)
+
+  if (!rows.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state__icon">✅</div><div class="empty-state__msg">No city is currently above reference prices.</div></div>`
+    return
+  }
+
+  const max = rows[0].avgPct
+  el.innerHTML = `
+    <div class="top-list">
+      ${rows.map((r, i) => {
+        const width = Math.min(100, Math.round((r.avgPct / max) * 100))
+        const rounded = Math.round(r.avgPct * 10) / 10
+        return `
+          <div class="top-list__row">
+            <span class="top-list__rank">#${i + 1}</span>
+            <div>
+              <div class="top-list__city">📍 ${r.city}</div>
+              <div class="top-list__bar"><span style="width:${width}%"></span></div>
+            </div>
+            <div class="mono" style="color:var(--red);font-weight:700">+${rounded}%</div>
+          </div>`
+      }).join('')}
+    </div>
+  `
+}
+
 function getProductEmoji(name) {
-  const map = { 'Sugar':'🍬','Atta (Wheat)':'🌾','Cooking Oil':'🫙','Rice (Basmati)':'🍚','Milk':'🥛','Chicken':'🍗','Tomatoes':'🍅','Onions':'🧅','Potatoes':'🥔','Apples':'🍎' }
-  return map[name] || '📦'
+  const p = PRODUCTS.find(p => p.name === name)
+  return p?.icon || '📦'
 }
 
   // ---- Init ----

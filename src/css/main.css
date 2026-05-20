@@ -3,7 +3,7 @@
    Aesthetic: ink–slate base, teal accent, editorial display type
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400;600&family=Fraunces:ital,opsz,wght@0,6..144,500..700;1,6..144,500&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400;600&family=Fraunces:ital,opsz,wght@0,6..144,500..700;1,6..144,500&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap');
 
 /* ---- Variables ---- */
 :root {
@@ -56,6 +56,53 @@
   --nav-h:     64px;
   --sidebar-w: 268px;
   --content-max: 1400px;
+}
+
+/* ---- Light Theme Overrides ---- */
+:root[data-theme='light'] {
+  --bg-base:       #f7f8fb;
+  --bg-surface:    #ffffff;
+  --bg-card:       #ffffff;
+  --bg-raised:     #f1f5f9;
+  --bg-hover:      #e2e8f0;
+
+  --accent:        #0d9488;
+  --accent-dim:    rgba(13, 148, 136, 0.10);
+  --accent-glow:   rgba(13, 148, 136, 0.18);
+
+  --gold:          #0369a1;
+  --gold-light:    #0c4a6e;
+  --gold-dark:     #0284c7;
+  --gold-dim:      rgba(3, 105, 161, 0.12);
+  --gold-faint:    rgba(3, 105, 161, 0.05);
+
+  --text-primary:  #0f172a;
+  --text-secondary:#334155;
+  --text-muted:    #64748b;
+  --text-inverse:  #ffffff;
+
+  --green:         #059669;
+  --red:           #dc2626;
+  --amber:         #d97706;
+  --red-dark:      #7f1d1d;
+  --red-bg:        rgba(220, 38, 38, 0.10);
+  --green-bg:      rgba(5, 150, 105, 0.10);
+  --amber-bg:      rgba(217, 119, 6, 0.10);
+
+  --border:        rgba(15, 23, 42, 0.10);
+  --border-strong: rgba(15, 23, 42, 0.20);
+
+  --shadow-sm:  0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md:  0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg:  0 12px 32px rgba(15, 23, 42, 0.10);
+  --shadow-gold:0 0 30px var(--accent-glow);
+}
+
+:root[data-theme='light'] body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(13, 148, 136, 0.06), transparent 55%),
+    radial-gradient(900px 500px at 0% 100%, rgba(2, 132, 199, 0.05), transparent 50%),
+    var(--bg-base);
 }
 
 /* ---- Reset ---- */
@@ -879,3 +926,143 @@ tbody td {
 .w-full { width: 100%; }
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ---- Topbar toolbar (theme & language toggles) ---- */
+.topbar__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.35rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.topbar__tool:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.topbar__tool[aria-pressed='true'] {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---- RTL (Urdu) support ---- */
+html[dir='rtl'] {
+  --font-body: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'DM Sans', sans-serif;
+}
+html[dir='rtl'] body { direction: rtl; }
+html[dir='rtl'] .topbar { left: 0; right: var(--sidebar-w); }
+html[dir='rtl'] .main-content { margin-left: 0; margin-right: var(--sidebar-w); }
+html[dir='rtl'] .sidebar { left: auto; right: 0; border-right: none; border-left: 1px solid var(--border); }
+html[dir='rtl'] .topbar__meta { margin-left: 0; margin-right: auto; }
+@media (max-width: 900px) {
+  html[dir='rtl'] .main-content { margin-right: 0; }
+  html[dir='rtl'] .topbar { right: 0; }
+  html[dir='rtl'] .sidebar { transform: translateX(100%); }
+  html[dir='rtl'] .sidebar.open { transform: translateX(0); }
+}
+
+/* ---- Highlight card (National Price Index) ---- */
+.pi-card {
+  background: linear-gradient(135deg, var(--accent-dim), var(--gold-faint));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.pi-card__label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.pi-card__value {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.pi-card__value--up { color: var(--red); }
+.pi-card__value--down { color: var(--green); }
+.pi-card__hint {
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* ---- Top overpriced cities widget ---- */
+.top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.top-list__row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.top-list__rank {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.top-list__city {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.top-list__bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.top-list__bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber), var(--red));
+}
+
+/* ---- Map page ---- */
+.map-wrap {
+  width: 100%;
+  height: 540px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.map-legend__dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}

@@ -2,6 +2,8 @@
 
 import { getSession, getStaffProfile, hasStaffAccess, hasPermission, signOut } from './auth.js'
 import { isPhase2 } from './phase.js'
+import { applyStoredTheme, getTheme, toggleTheme } from './theme.js'
+import { applyStoredLang, getLang, toggleLang, t } from './i18n.js'
 
 /** @typedef {{ profile?: object | null, session?: object, userEmail?: string | null, showAdminNav?: boolean }} LayoutOptions */
 
@@ -9,6 +11,8 @@ import { isPhase2 } from './phase.js'
  * Renders shell. Admin nav links depend on `staff_profiles` permissions.
  */
 export async function renderLayout(pageTitle, activePage, options = {}) {
+  applyStoredTheme()
+  applyStoredLang()
   const session = options.session ?? (await getSession())
   let profile = options.profile
   if (profile === undefined && session?.user) {
@@ -23,43 +27,58 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
   const showHist = hasPermission(profile, 'history')
   const showRef = hasPermission(profile, 'reference')
   const showAreaMonitors = isPhase2() && hasPermission(profile, 'areaMonitors')
+  const showCities = hasPermission(profile, 'areaMonitors')
 
   const insights =
     hasAccess && (showDash || showHist)
       ? `
-        <div class="nav-section-label" style="margin-top:0.75rem">Insights</div>
+        <div class="nav-section-label" style="margin-top:0.75rem">${t('nav.insights')}</div>
         ${
           showDash
             ? `<a href="/dashboard.html" class="nav-item ${activePage === 'dashboard' ? 'active' : ''}">
-          <span class="nav-item__icon">📈</span> Dashboard
+          <span class="nav-item__icon">📈</span> ${t('nav.dashboard')}
         </a>`
             : ''
         }
         ${
           showHist
             ? `<a href="/history.html" class="nav-item ${activePage === 'history' ? 'active' : ''}">
-          <span class="nav-item__icon">🗂</span> History
+          <span class="nav-item__icon">🗂</span> ${t('nav.history')}
         </a>`
             : ''
         }
+        <a href="/map.html" class="nav-item ${activePage === 'map' ? 'active' : ''}">
+          <span class="nav-item__icon">🗺️</span> ${t('nav.map')}
+        </a>
       `
-      : ''
+      : `
+        <a href="/map.html" class="nav-item ${activePage === 'map' ? 'active' : ''}">
+          <span class="nav-item__icon">🗺️</span> ${t('nav.map')}
+        </a>
+      `
 
   const adminSec =
-    hasAccess && (showRef || showAreaMonitors)
+    hasAccess && (showRef || showAreaMonitors || showCities)
       ? `
-        <div class="nav-section-label" style="margin-top:0.75rem">Administration</div>
+        <div class="nav-section-label" style="margin-top:0.75rem">${t('nav.admin')}</div>
         ${
           showRef
             ? `<a href="/admin.html" class="nav-item ${activePage === 'admin' ? 'active' : ''}">
-          <span class="nav-item__icon">⚙️</span> Reference Prices
+          <span class="nav-item__icon">⚙️</span> ${t('nav.reference')}
+        </a>`
+            : ''
+        }
+        ${
+          showCities
+            ? `<a href="/cities.html" class="nav-item ${activePage === 'cities' ? 'active' : ''}">
+          <span class="nav-item__icon">🏙️</span> ${t('nav.cities')}
         </a>`
             : ''
         }
         ${
           showAreaMonitors
             ? `<a href="/area-monitors.html" class="nav-item ${activePage === 'areaMonitors' ? 'active' : ''}">
-          <span class="nav-item__icon">📍</span> Area monitors
+          <span class="nav-item__icon">📍</span> ${t('nav.areaMonitors')}
         </a>`
             : ''
         }
@@ -72,11 +91,11 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
     ? `
         <div class="sidebar__account">
           <span class="sidebar__account-email" title="${userEmail || ''}">${userEmail ? escapeHtml(userEmail) : 'Admin'}</span>
-          <button type="button" class="btn btn--ghost btn--sm btn--full" id="sidebar-signout">Sign out</button>
+          <button type="button" class="btn btn--ghost btn--sm btn--full" id="sidebar-signout">${t('nav.signout')}</button>
         </div>
       `
     : `
-        <a href="/login.html?next=/dashboard.html" class="sidebar__staff-link">Admin sign in</a>
+        <a href="/login.html?next=/dashboard.html" class="sidebar__staff-link">${t('nav.adminSignin')}</a>
       `
 
   document.body.insertAdjacentHTML(
@@ -95,9 +114,9 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
         </div>
       </div>
       <nav class="sidebar__nav">
-        <div class="nav-section-label">Public</div>
+        <div class="nav-section-label">${t('nav.public')}</div>
         <a href="/index.html" class="nav-item ${activePage === 'submit' ? 'active' : ''}">
-          <span class="nav-item__icon">📝</span> Submit Prices
+          <span class="nav-item__icon">📝</span> ${t('nav.submit')}
         </a>
         ${adminBlock}
       </nav>
@@ -114,7 +133,13 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
         <button class="hamburger" id="hamburger" aria-label="Toggle menu">☰</button>
         <span class="topbar__title">${escapeHtml(pageTitle)}</span>
         <div class="topbar__meta">
-          <span class="realtime-dot" id="realtime-status">Live</span>
+          <button type="button" class="topbar__tool" id="lang-toggle" aria-pressed="${getLang() === 'ur'}" title="Toggle language">
+            ${getLang() === 'ur' ? 'EN' : 'اردو'}
+          </button>
+          <button type="button" class="topbar__tool" id="theme-toggle" aria-pressed="${getTheme() === 'light'}" title="Toggle theme">
+            ${getTheme() === 'light' ? '🌙' : '☀️'}
+          </button>
+          <span class="realtime-dot" id="realtime-status">${t('topbar.live')}</span>
         </div>
       </header>
 
@@ -136,6 +161,23 @@ export async function renderLayout(pageTitle, activePage, options = {}) {
     overlay.classList.add('hidden')
   })
 
+  const themeBtn = document.getElementById('theme-toggle')
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      toggleTheme()
+      themeBtn.setAttribute('aria-pressed', String(getTheme() === 'light'))
+      themeBtn.textContent = getTheme() === 'light' ? '🌙' : '☀️'
+    })
+  }
+
+  const langBtn = document.getElementById('lang-toggle')
+  if (langBtn) {
+    langBtn.addEventListener('click', () => {
+      toggleLang()
+      window.location.reload()
+    })
+  }
+
   const signoutBtn = document.getElementById('sidebar-signout')
   if (signoutBtn) {
     signoutBtn.addEventListener('click', async () => {
@@ -156,7 +198,7 @@ function escapeHtml(s) {
 export function setRealtimeStatus(connected) {
   const el = document.getElementById('realtime-status')
   if (!el) return
-  el.textContent = connected ? 'Live' : 'Offline'
+  el.textContent = connected ? t('topbar.live') : t('topbar.offline')
   el.style.opacity = connected ? '1' : '0.4'
 }
 
