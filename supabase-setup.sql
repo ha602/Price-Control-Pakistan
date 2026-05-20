@@ -25,17 +25,26 @@ CREATE TABLE IF NOT EXISTS reference_prices (
 );
 
 -- 3. Insert default reference prices (PKR)
+--    Keep this list in sync with PRODUCTS in src/js/config.js
 INSERT INTO reference_prices (product, reference_price, unit) VALUES
-  ('Sugar',         120.00, 'kg'),
-  ('Atta (Wheat)',  80.00,  'kg'),
-  ('Cooking Oil',   320.00, 'litre'),
-  ('Rice (Basmati)',250.00, 'kg'),
-  ('Tomatoes',       60.00, 'kg'),
-  ('Onions',         50.00, 'kg'),
-  ('Potatoes',       40.00, 'kg'),
-  ('Apples',        200.00, 'kg'),
-  ('Milk',          140.00, 'litre'),
-  ('Chicken',       450.00, 'kg')
+  ('Sugar',          120.00, 'kg'),
+  ('Atta (Wheat)',    80.00, 'kg'),
+  ('Cooking Oil',    320.00, 'litre'),
+  ('Rice (Basmati)', 250.00, 'kg'),
+  ('Dal (Masoor)',   300.00, 'kg'),
+  ('Milk',           140.00, 'litre'),
+  ('Eggs',           330.00, 'dozen'),
+  ('Chicken',        450.00, 'kg'),
+  ('Beef',          1100.00, 'kg'),
+  ('Tomatoes',        60.00, 'kg'),
+  ('Onions',          50.00, 'kg'),
+  ('Potatoes',        40.00, 'kg'),
+  ('Apples',         200.00, 'kg'),
+  ('Bananas',        180.00, 'dozen'),
+  ('Tea',           2200.00, 'kg'),
+  ('Roti (Naan)',     25.00, 'piece'),
+  ('Petrol',         280.00, 'litre'),
+  ('LPG Cylinder',  3200.00, 'cylinder')
 ON CONFLICT (product) DO NOTHING;
 
 -- 4. Create view for city+product averages
@@ -110,10 +119,12 @@ GRANT EXECUTE ON FUNCTION public.staff_requester_can_update_reference_prices() T
 
 ALTER TABLE staff_profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "staff_reads_own_profile" ON staff_profiles;
 CREATE POLICY "staff_reads_own_profile"
   ON staff_profiles FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "super_admin_manage_staff" ON staff_profiles;
 CREATE POLICY "super_admin_manage_staff"
   ON staff_profiles FOR ALL
   USING (public.staff_requester_is_super_admin())
@@ -132,9 +143,11 @@ CREATE POLICY "Staff can read submissions"
   ON price_submissions FOR SELECT
   USING (public.staff_requester_can_read_submissions());
 
+DROP POLICY IF EXISTS "Allow public insert on submissions" ON price_submissions;
 CREATE POLICY "Allow public insert on submissions"
   ON price_submissions FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public read on reference_prices" ON reference_prices;
 CREATE POLICY "Allow public read on reference_prices"
   ON reference_prices FOR SELECT USING (true);
 
@@ -146,8 +159,13 @@ CREATE POLICY "Staff can update reference prices"
   USING (public.staff_requester_can_update_reference_prices())
   WITH CHECK (public.staff_requester_can_update_reference_prices());
 
--- 8. Enable Realtime on price_submissions (ignore error if already added)
-ALTER PUBLICATION supabase_realtime ADD TABLE price_submissions;
+-- 8. Enable Realtime on price_submissions (idempotent)
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE price_submissions;
+EXCEPTION WHEN duplicate_object THEN
+  NULL;
+END $$;
 
 -- ============================================================
 -- Create first Auth user (Authentication), then run:

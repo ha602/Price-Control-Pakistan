@@ -1,7 +1,7 @@
 import '../../css/main.css'
 import { renderLayout } from '../layout.js'
 import { PRODUCTS } from '../config.js'
-import { getReferencePrices, updateReferencePrice, getNationalAverages } from '../api.js'
+import { getReferencePrices, upsertReferencePrice, getNationalAverages } from '../api.js'
 import { formatPKR, calcOverprice, getSeverityLabel, showToast } from '../utils.js'
 import { requirePermission } from '../auth.js'
 
@@ -112,38 +112,32 @@ async function loadData() {
 // ---- Render Reference Price Edit Table ----
 function renderRefTable() {
   const el = document.getElementById('ref-table-wrap')
-
-  if (!refPrices.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state__icon">📭</div>
-        <div class="empty-state__title">No reference prices</div>
-        <div class="empty-state__msg">Run the SQL setup script to populate reference prices.</div>
-      </div>`
-    return
-  }
+  const refMap = Object.fromEntries(refPrices.map(r => [r.product, r]))
 
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:0.75rem" id="ref-items">
-      ${refPrices.map(r => {
-        const product = PRODUCTS.find(p => p.name === r.product)
-        const icon = product ? product.icon : '📦'
-        const key = r.product.replace(/[^a-z]/gi, '_')
+      ${PRODUCTS.map(product => {
+        const r = refMap[product.name]
+        const key = product.name.replace(/[^a-z]/gi, '_')
+        const original = r ? String(r.reference_price) : ''
+        const unit = r?.unit || product.unit
         return `
           <div class="price-item" id="ref-item-${key}" style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem">
-            <span style="font-size:1.4rem;flex-shrink:0">${icon}</span>
+            <span style="font-size:1.4rem;flex-shrink:0">${product.icon}</span>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;color:var(--text-primary);font-size:0.92rem">${r.product}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted)">per ${r.unit}</div>
+              <div style="font-weight:600;color:var(--text-primary);font-size:0.92rem">${product.name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">per ${unit}${r ? '' : ' · <span style="color:var(--amber)">Not set</span>'}</div>
             </div>
             <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
               <span style="font-size:0.8rem;color:var(--text-muted)">Rs.</span>
               <input
                 type="number"
                 id="ref-input-${key}"
-                data-product="${r.product}"
-                data-original="${r.reference_price}"
-                value="${r.reference_price}"
+                data-product="${product.name}"
+                data-unit="${product.unit}"
+                data-original="${original}"
+                value="${original}"
+                placeholder="—"
                 min="1"
                 step="0.5"
                 style="width:100px;font-family:'JetBrains Mono',monospace;font-size:0.95rem;text-align:right"
@@ -269,7 +263,11 @@ document.getElementById('save-all-btn').addEventListener('click', async () => {
   btn.textContent = 'Saving…'
 
   try {
-    await Promise.all(entries.map(([product, price]) => updateReferencePrice(product, price)))
+    await Promise.all(entries.map(([product, price]) => {
+      const input = document.querySelector(`[data-product="${CSS.escape(product)}"]`)
+      const unit = input?.dataset.unit || 'kg'
+      return upsertReferencePrice(product, price, unit)
+    }))
     showToast(`✅ ${entries.length} reference price${entries.length > 1 ? 's' : ''} updated!`, 'success')
     editedValues = {}
 
